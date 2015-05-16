@@ -7,19 +7,106 @@ output:
 
 
 ## Loading and preprocessing the data
+1. Load the data (i.e. `read.csv()`)
+1. Process/transform the data (if necessary) into a format suitable for your analysis
 
-
-
+```{r}
+library(lattice)
+zipfile <- "activity.zip"
+csvfile <- "activity.csv"
+unzipped <- unz(zipfile, csvfile)
+data <- read.csv(unzipped)
+```
 ## What is mean total number of steps taken per day?
+1. Make a histogram of the total number of steps taken each day
+1. Calculate and report the **mean** and **median** total number of steps taken per day
+```{r}
+d <- data[,1:2]
+s <- split(d, d$date)
+total <- sapply(s, function(x) sum(x[,"steps"]))
 
+histogram(total, xlab="Total Number of Steps Per Day", ylab="Percent(%)", main="Histogram",na.rm=T)
 
+mean <- mean(total, na.rm=T)
+median <- median(total, na.rm=T)
+print(mean)
+print(median)
 
+```
 ## What is the average daily activity pattern?
-
-
+1. Make a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+1. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r}
+d2 <- data[,c(1,3)]
+s2 <- split(d2, d2$interval)
+interval_mean <- sapply(s2, function(x) mean(x[,"steps"], na.rm=T))
+plot( names(interval_mean), interval_mean, type="l", main="Average Daily Activity", 
+      xlab="Interval", ylab="Number of Steps")
+```
 
 ## Imputing missing values
+Note that there are a number of days/intervals where there are missing
+values (coded as `NA`). The presence of missing days may introduce
+bias into some calculations or summaries of the data.
 
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with `NA`s)
+1. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+1. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+1. Make a histogram of the total number of steps taken each day and Calculate and report the **mean** and **median** total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+
+```{r}
+na <- is.na(data$steps)
+num_na <- sum(na)
+print(num_na)  ## print out the number of NAs
+
+interval_mean <- as.integer(interval_mean)  ## convert double to integer
+new_data <- cbind(data, interval_mean) ## add 4th column
+new_data[is.na(new_data),"steps"] <- new_data[is.na(new_data),"interval_mean"]
+new_data$interval_mean <- NULL ## drop 4th column
+
+##
+d <- new_data[,1:2]
+s <- split(d, d$date)
+total <- sapply(s, function(x) sum(x[,"steps"]))
+
+histogram(total, xlab="Total Number of Steps Per Day", ylab="Percent(%)", main="Histogram",na.rm=T)
+
+mean <- mean(total, na.rm=T)
+median <- median(total, na.rm=T)
+print(mean)
+print(median)
+```
+Conclusions: The mean and median values are slightly different after imputing the missing data.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+For this part the `weekdays()` function may be of some help here. Use
+the dataset with the filled-in missing values for this part.
+
+1. Create a new factor variable in the dataset with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+1. Make a panel plot containing a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+
+```{r}
+d <- as.Date(new_data$date)
+day <- weekdays(d)
+weekday <-sapply(day, function(x) ifelse((x=="Saturday"|x=="Sunday"),FALSE,TRUE))
+weekday.fc <- as.factor(weekday)
+new_data.fc <- cbind(new_data, weekday.fc)
+
+d3 <- new_data.fc[new_data.fc$weekday==TRUE,c(1,3)]
+s3 <- split(d3, d3$interval)
+interval_mean3 <- sapply(s3, function(x) mean(x[,"steps"], na.rm=T))
+d4 <- new_data.fc[new_data.fc$weekday==FALSE,c(1,3)]
+s4 <- split(d4, d4$interval)
+interval_mean4 <- sapply(s4, function(x) mean(x[,"steps"], na.rm=T))
+
+par(mfrow=c(2,1))
+par(mar=c(4,4,1,1))
+plot( names(interval_mean3), interval_mean3, type="l", main="Weekday Average", 
+      xlab="Interval", ylab="Number of Steps", col="blue")
+
+plot( names(interval_mean4), interval_mean4, type="l", main="Weekend Average", 
+      xlab="Interval", ylab="Number of Steps", col="green")
+
+```
